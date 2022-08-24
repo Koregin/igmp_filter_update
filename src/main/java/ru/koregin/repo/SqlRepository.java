@@ -118,6 +118,34 @@ public class SqlRepository implements AutoCloseable {
     }
 
     /**
+     * Check new connection in current month
+     *
+     * @param id abonent
+     * @return true if connection was
+     */
+    public boolean checkNewConnectionCurrentMonth(int id) {
+        int connection = 0;
+        try (PreparedStatement ps =
+                     cn.prepareStatement("SELECT COUNT(id) connection "
+                             + "FROM events "
+                             + "WHERE user = ? "
+                             + "AND YEAR(date) = YEAR(CURDATE()) "
+                             + "AND MONTH(date) = MONTH(CURDATE()) "
+                             + "AND (action = 6 OR action = 2)")) {
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    connection = rs.getInt("connection");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        LOG.debug("User connection " + id + " :" + connection);
+        return connection == 2;
+    }
+
+    /**
      * Get IP Groups from abonent's subscribe
      *
      * @param id abonent
@@ -146,12 +174,13 @@ public class SqlRepository implements AutoCloseable {
 
     /**
      * Set field cisco_job = 1 after profile update
+     *
      * @param id
      */
     public void setCiscoJob(int id) {
         LOG.debug("Меняю статус executed в cisco_jobs на выполнен (1). UserID=" + id);
         try (PreparedStatement ps =
-                cn.prepareStatement("UPDATE cisco_jobs SET executed = 1 WHERE user = ?")) {
+                     cn.prepareStatement("UPDATE cisco_jobs SET executed = 1 WHERE user = ?")) {
             ps.setInt(1, id);
             ps.executeUpdate();
         } catch (SQLException e) {
@@ -161,6 +190,7 @@ public class SqlRepository implements AutoCloseable {
 
     /**
      * Fina all abonents which have executed = 0 in cisco_jobs
+     *
      * @return List<Abonent>
      */
     public List<Abonent> findAllOperAbonents() {

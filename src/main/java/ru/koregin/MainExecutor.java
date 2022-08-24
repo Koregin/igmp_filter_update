@@ -26,19 +26,29 @@ public class MainExecutor {
                 String switchIp = abonent.getSwitchIp();
                 String userName = abonent.getUserName();
                 LOG.info("\n---------- Обработка абонента: ID=" + userId + " - " + userName + " ----------");
-                if (store.checkBlockAbonent(userId) && store.checkBalance(userId) && store.checkWriteOffsCurrentMonth(userId)) {
-                    LOG.info("Абонент ID: " + userId + " прошел проверку. Генерируем igmp профиль");
+                boolean checkBlock = store.checkBlockAbonent(userId);
+                boolean checkBalance = store.checkBalance(userId);
+                boolean checkWriteOffs = store.checkWriteOffsCurrentMonth(userId);
+                boolean checkConnection = store.checkNewConnectionCurrentMonth(userId);
+                if (checkBlock && checkBalance && (checkWriteOffs || checkConnection)) {
+                    if (checkConnection) {
+                        LOG.info("Абонент ID: " + userId + " прошел проверку. Новое подключение. Генерируем профиль.");
+                    } else {
+                        LOG.info("Абонент ID: " + userId + " прошел проверку. Генерируем igmp профиль.");
+                    }
                     ipGroups = store.getIpGroupsForAbonent(userId);
                 } else {
-                    LOG.info("Абонент ID: " + userId + " не прошел проверку. Генерируем профиль по умолчанию");
+                    LOG.info("Абонент ID: " + userId + " не прошел проверку. Генерируем профиль по умолчанию.");
                 }
                 if (telnetExecutor.igmpProfileUpdate(userId, switchIp, port, ipGroups)) {
                     store.setCiscoJob(userId);
                 }
             }
+            if (abonents.size() > 0) {
+                LOG.info("Exec time: " + (System.currentTimeMillis() - timeExec) + " ms.");
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        LOG.info("Exec time: " + (System.currentTimeMillis() - timeExec) + " ms.");
     }
 }
